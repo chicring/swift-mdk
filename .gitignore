@@ -97,3 +97,4 @@ fastlane/test_output
 # https://github.com/johnno1962/injectionforxcode
 
 iOSInjectionProject/
+mdk-sdk-apple-nightly.zip
