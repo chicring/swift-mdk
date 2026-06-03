@@ -283,11 +283,11 @@ public class Player {
             var callback : ((Int64, inout Bool)->Bool)?
         }
         func f_(pos:Int64, boost:UnsafeMutablePointer<Bool>?, opaque:UnsafeMutableRawPointer?)->Bool {
-            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!)
-            let p = obj.takeUnretainedValue()
+            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!).takeRetainedValue()
+            let cb = obj.callback
+            obj.callback = nil
             var _boost = true
-            let ret = p.callback!(pos, &_boost)
-            obj.release()
+            let ret = cb!(pos, &_boost)
             boost?.update(repeating: _boost, count: 1)
             return ret
         }
@@ -470,10 +470,10 @@ public class Player {
             var callback : ((Int64)->Void)?
         }
         func f_(ms:Int64, opaque:UnsafeMutableRawPointer?)->Void {
-            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!)
-            let p = obj.takeUnretainedValue()
-            p.callback?(ms)
-            obj.release()
+            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!).takeRetainedValue()
+            let cb = obj.callback
+            obj.callback = nil
+            cb?(ms)
         }
         var cb = mdkSeekCallback()
         cb.cb = f_
@@ -506,10 +506,10 @@ public class Player {
             var callback : ((Bool)->Void)?
         }
         func f_(result:Bool, opaque:UnsafeMutableRawPointer?)->Void {
-            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!)
-            let p = obj.takeUnretainedValue()
-            p.callback?(result)
-            obj.release()
+            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque!).takeRetainedValue()
+            let cb = obj.callback
+            obj.callback = nil
+            cb?(result)
         }
         var cb = SwitchBitrateCallback()
         cb.cb = f_
@@ -578,15 +578,17 @@ public class Player {
             var callback: SnapshotCallback?
         }
         func f_(req: UnsafeMutablePointer<mdkSnapshotRequest>?, frameTime: Double, opaque: UnsafeMutableRawPointer?) -> UnsafeMutablePointer<CChar>? {
-            guard let obj = opaque.map({ Unmanaged<CallbackObj>.fromOpaque($0).takeUnretainedValue() }),
-                  let cb = obj.callback,
+            guard let opaque = opaque else { return nil }
+            let obj = Unmanaged<CallbackObj>.fromOpaque(opaque).takeRetainedValue()
+            let cb = obj.callback
+            obj.callback = nil
+            guard let cb = cb,
                   let req = req,
                   let data = req.pointee.data
             else {
                 return nil
             }
             let path = cb(data, req.pointee.width, req.pointee.height, req.pointee.stride)
-            Unmanaged<CallbackObj>.fromOpaque(opaque!).release()
             return path.flatMap { strdup($0) }
         }
         var request = mdkSnapshotRequest()
